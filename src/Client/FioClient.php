@@ -3,9 +3,12 @@
 namespace App\Client;
 
 use App\Dto\AccountStatementDto;
+use App\Exception\FioDuplicateRequestException;
 use App\Exception\HttpException;
 use App\Exception\InvalidFormatException;
-use App\Exception\JsonException;
+use App\Exception\FioJsonException;
+use InvalidArgumentException;
+use JsonException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
@@ -13,6 +16,7 @@ use Psr\Http\Message\RequestFactoryInterface;
 class FioClient
 {
     private string $token;
+    private string $baseUrl;
     private ClientInterface $client;
     private RequestFactoryInterface $requestFactory;
     private const BASE_URL = 'https://fioapi.fio.cz/v1/rest';
@@ -28,11 +32,13 @@ class FioClient
     public function __construct(
         string $token,
         ClientInterface $client,
-        RequestFactoryInterface $requestFactory
+        RequestFactoryInterface $requestFactory,
+        string $baseUrl = self::BASE_URL
     ) {
         $this->token = $token;
         $this->client = $client;
         $this->requestFactory = $requestFactory;
+        $this->baseUrl = $baseUrl;
     }
 
     /**
@@ -49,6 +55,9 @@ class FioClient
         \DateTimeInterface $to,
         string $format = self::FORMAT_JSON
     ): string {
+        if ($from > $to) {
+            throw new InvalidArgumentException();
+        }
         $path = sprintf(
             'periods/%s/%s/%s/transactions',
             $this->token,
@@ -56,27 +65,21 @@ class FioClient
             $to->format('Y-m-d')
         );
 
-        return $this->request($path, $format);
+        return $this->request('GET', $path, $format);
     }
 
     /**
      * Get transactions as an AccountStatementDto
      *
      * @throws ClientExceptionInterface
-     * @throws JsonException|\JsonException
      */
-    public function getTransactionsDTO(
+    public function getTransactionsDto(
         \DateTimeInterface $from,
         \DateTimeInterface $to
     ): AccountStatementDto {
         $json = $this->getTransactionsRaw($from, $to, self::FORMAT_JSON);
-        $data = $this->decodeJson($json);
 
-        if (!isset($data['accountStatement'])) {
-            throw new JsonException('Missing accountStatement in response');
-        }
-
-        return AccountStatementDto::fromArray($data['accountStatement']);
+        return $this->mapToAccountStatement($json);
     }
 
     /**
@@ -87,25 +90,20 @@ class FioClient
     public function getLastTransactionsRaw(string $format = self::FORMAT_JSON): string
     {
         $path = sprintf('last/%s/transactions', $this->token);
-        return $this->request($path, $format);
+        return $this->request('GET', $path, $format);
     }
 
     /**
      * Get last transactions as AccountStatementDto
      *
      * @throws ClientExceptionInterface
-     * @throws JsonException|\JsonException
+     * @throws FioJsonException
      */
-    public function getLastTransactionsDTO(): AccountStatementDto
+    public function getLastTransactionsDto(): AccountStatementDto
     {
         $json = $this->getLastTransactionsRaw(self::FORMAT_JSON);
-        $data = $this->decodeJson($json);
 
-        if (!isset($data['accountStatement'])) {
-            throw new JsonException('Missing accountStatement in response');
-        }
-
-        return AccountStatementDto::fromArray($data['accountStatement']);
+        return $this->mapToAccountStatement($json);
     }
 
     /**
@@ -116,25 +114,21 @@ class FioClient
     public function getTransactionsSinceIdRaw(int $id, string $format = self::FORMAT_JSON): string
     {
         $path = sprintf('by-id/%s/%d/transactions', $this->token, $id);
-        return $this->request($path, $format);
+
+        return $this->request('GET', $path, $format);
     }
 
     /**
      * Get transactions since a specific transaction ID (DTO)
      *
      * @throws ClientExceptionInterface
-     * @throws JsonException|\JsonException
+     * @throws FioJsonException
      */
-    public function getTransactionsSinceIdDTO(int $id): AccountStatementDto
+    public function getTransactionsSinceIdDto(int $id): AccountStatementDto
     {
         $json = $this->getTransactionsSinceIdRaw($id, self::FORMAT_JSON);
-        $data = $this->decodeJson($json);
 
-        if (!isset($data['accountStatement'])) {
-            throw new JsonException('Missing accountStatement in response');
-        }
-
-        return AccountStatementDto::fromArray($data['accountStatement']);
+        return $this->mapToAccountStatement($json);
     }
 
     /**
@@ -147,12 +141,13 @@ class FioClient
     public function setLastId(int $id, string $format = self::FORMAT_JSON): string
     {
         $path = sprintf('set-last-id/%s/%d', $this->token, $id);
-        return $this->request($path, $format);
+
+        return $this->request('GET', $path, $format);
     }
 
     private function buildUrl(string $path, string $format): string
     {
-        return sprintf('%s/%s.%s', self::BASE_URL, $path, $format);
+        return sprintf('%s/%s.%s', $this->baseUrl, $path, $format);
     }
 
     /**
@@ -160,18 +155,28 @@ class FioClient
      * @throws HttpException
      * @throws InvalidFormatException
      */
-    private function request(string $path, string $format): string
+    private function request(string $method, string $path, string $format): string
     {
         if (!in_array($format, self::ALLOWED_FORMATS, true)) {
             throw new InvalidFormatException('Invalid format');
         }
 
         $url = $this->buildUrl($path, $format);
-        $request = $this->requestFactory->createRequest('GET', $url);
+        $request = $this->requestFactory->createRequest($method, $url);
         $response = $this->client->sendRequest($request);
 
+        if ($response->getStatusCode() === 409) {
+            throw new FioDuplicateRequestException(
+                $response->getStatusCode(),
+                'FIO API rejected a duplicate request (requests repeated within a short time window may be rejected, typically ~30s).'
+            );
+        }
+
         if ($response->getStatusCode() >= 300) {
-            throw new HttpException($response->getStatusCode(), 'FIO API request failed');
+            throw new HttpException(
+                $response->getStatusCode(),
+                sprintf('FIO API request failed: %s', $response->getBody())
+            );
         }
 
         return (string)$response->getBody();
@@ -180,15 +185,34 @@ class FioClient
     /**
      * Decode JSON and throw on error
      *
-     * @throws JsonException|\JsonException
+     * @throws FioJsonException|JsonException
      */
     private function decodeJson(string $content): array
     {
         $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
         if (!is_array($data)) {
-            throw new JsonException('Invalid JSON from FIO API');
+            throw new FioJsonException('Invalid JSON from FIO API');
         }
 
         return $data;
+    }
+
+    /**
+     * @param string $json
+     * @return AccountStatementDto
+     */
+    private function mapToAccountStatement(string $json): AccountStatementDto
+    {
+        try {
+            $data = $this->decodeJson($json);
+        } catch (JsonException $e) {
+            throw new FioJsonException('Invalid JSON from FIO API');
+        }
+
+        if (!isset($data['accountStatement'])) {
+            throw new FioJsonException('Missing accountStatement in response');
+        }
+
+        return AccountStatementDto::fromArray($data['accountStatement']);
     }
 }

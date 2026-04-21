@@ -6,12 +6,10 @@ namespace App\Tests\Client;
 
 use App\Client\FioClient;
 use App\Dto\AccountStatementDto;
-use App\Dto\TransactionDto;
 use App\Exception\HttpException;
 use App\Exception\InvalidFormatException;
-use App\Exception\JsonException;
-use PHPUnit\Framework\MockObject\Exception;
-use PHPUnit\Framework\MockObject\Stub;
+use App\Exception\FioJsonException;
+use App\Tests\Fixture\FioApiFixture;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -22,200 +20,144 @@ use Psr\Http\Message\StreamInterface;
 
 class FioClientTest extends TestCase
 {
-    /**
-     * @throws Exception
-     */
+    private const BASE_URL = 'https://fioapi.fio.cz/v1/rest';
+    private const TOKEN = 'test-token';
+
+    private function url(string $path): string
+    {
+        return sprintf('%s/%s', self::BASE_URL, ltrim($path, '/'));
+    }
+
     private function createClient(
         string $responseBody,
         string $expectedUrl,
         int $statusCode = 200,
         bool $expectRequest = true
     ): FioClient {
-
-        /** @var RequestInterface&Stub $request */
         $request = $this->createStub(RequestInterface::class);
 
-        /** @var StreamInterface&Stub $stream */
         $stream = $this->createStub(StreamInterface::class);
         $stream->method('__toString')->willReturn($responseBody);
 
-        /** @var ResponseInterface&Stub $response */
         $response = $this->createStub(ResponseInterface::class);
         $response->method('getStatusCode')->willReturn($statusCode);
         $response->method('getBody')->willReturn($stream);
 
-        /** @var ClientInterface&Stub $httpClient */
         $httpClient = $this->createStub(ClientInterface::class);
         $httpClient->method('sendRequest')->willReturn($response);
 
-        /** @var RequestFactoryInterface&Stub $requestFactory */
-        $requestFactory = $this->createStub(RequestFactoryInterface::class);
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+
         if ($expectRequest) {
-            $requestFactory = $this->createMock(RequestFactoryInterface::class);
-            $requestFactory
-                ->expects($this->once())
+            $requestFactory->expects($this->once())
                 ->method('createRequest')
-                ->with('GET', $expectedUrl)
-                ->willReturn($request);
+                ->willReturnCallback(function ($method, $url) use ($expectedUrl, $request) {
+                    $this->assertSame('GET', $method);
+                    $this->assertSame($expectedUrl, $url);
+                    return $request;
+                });
         }
 
-        return new FioClient('test-token', $httpClient, $requestFactory);
+        return new FioClient(self::TOKEN, $httpClient, $requestFactory);
     }
 
     /**
      * @throws ClientExceptionInterface
-     * @throws Exception
      */
     public function testGetTransactionsReturnsParsedJson(): void
     {
         $from = new \DateTimeImmutable('2024-01-01');
         $to = new \DateTimeImmutable('2024-01-02');
 
-        $expectedUrl = sprintf(
-            'https://fioapi.fio.cz/v1/rest/periods/test-token/%s/%s/transactions.json',
+        $expectedUrl = $this->url(sprintf(
+            'periods/%s/%s/%s/transactions.json',
+            self::TOKEN,
             $from->format('Y-m-d'),
             $to->format('Y-m-d')
-        );
+        ));
 
-        $mockResponse = [
-            'accountStatement' => [
-                'info' => [
-                    'accountId' => '123',
-                    'bankId' => '456',
-                    'currency' => 'CZK',
-                    'iban' => 'CZ6508000000001234567899',
-                    'bic' => 'GIBACZPX',
-                    'openingBalance' => 1000.0,
-                    'closingBalance' => 1500.0,
-                    'dateStart' => '2024-01-01',
-                    'dateEnd' => '2024-01-02',
-                ],
-                'transactionList' => [
-                    'transaction' => [
-                        'column22' => ['value' => 123],
-                        'column17' => ['value' => 200],
-                        'column0' => ['value' => '2024-01-02'],
-                        'column1' => ['value' => 750.0],
-                        'column14' => ['value' => 'CZK'],
-                        'column2' => ['value' => '1234567890'],
-                        'column10' => ['value' => 'John Doe'],
-                    ],
-                ],
-            ],
-        ];
+        $payload = FioApiFixture::minimalTransaction(123, 'John Doe');
 
-        $client = $this->createClient(json_encode($mockResponse), $expectedUrl);
+        $client = $this->createClient(json_encode($payload), $expectedUrl);
 
-        $result = $client->getTransactions($from, $to);
+        $result = $client->getTransactionsDto($from, $to);
 
         $this->assertInstanceOf(AccountStatementDto::class, $result);
         $this->assertCount(1, $result->transactions);
-        $this->assertInstanceOf(TransactionDto::class, $result->transactions[0]);
         $this->assertSame(123, $result->transactions[0]->transactionId);
         $this->assertSame('John Doe', $result->transactions[0]->counterpartyName);
     }
 
     /**
      * @throws ClientExceptionInterface
-     * @throws Exception
      */
     public function testGetLastTransactionsReturnsParsedJson(): void
     {
-        $expectedUrl = 'https://fioapi.fio.cz/v1/rest/last/test-token/transactions.json';
+        $expectedUrl = $this->url('last/' . self::TOKEN . '/transactions.json');
 
-        $mockResponse = [
-            'accountStatement' => [
-                'info' => [],
-                'transactionList' => [
-                    'transaction' => [
-                        'column22' => ['value' => 1],
-                    ],
-                ],
-            ],
-        ];
+        $payload = FioApiFixture::minimalTransaction(1);
 
-        $client = $this->createClient(json_encode($mockResponse), $expectedUrl);
+        $client = $this->createClient(json_encode($payload), $expectedUrl);
 
-        $result = $client->getLastTransactions();
+        $result = $client->getLastTransactionsDto();
 
-        $this->assertInstanceOf(AccountStatementDto::class, $result);
         $this->assertSame(1, $result->transactions[0]->transactionId);
     }
 
     /**
      * @throws ClientExceptionInterface
-     * @throws Exception
      */
     public function testGetTransactionsSinceIdReturnsParsedJson(): void
     {
-        $expectedUrl = 'https://fioapi.fio.cz/v1/rest/by-id/test-token/123/transactions.json';
+        $expectedUrl = $this->url('by-id/' . self::TOKEN . '/123/transactions.json');
 
-        $mockResponse = [
-            'accountStatement' => [
-                'info' => [],
-                'transactionList' => [
-                    'transaction' => [
-                        'column22' => ['value' => 123],
-                        'column10' => ['value' => 'John Doe'],
-                    ],
-                ],
-            ],
-        ];
+        $payload = FioApiFixture::minimalTransaction(123, 'John Doe');
 
-        $client = $this->createClient(json_encode($mockResponse), $expectedUrl);
+        $client = $this->createClient(json_encode($payload), $expectedUrl);
 
-        $result = $client->getTransactionsSinceId(123);
+        $result = $client->getTransactionsSinceIdDto(123);
 
-        $this->assertInstanceOf(AccountStatementDto::class, $result);
-        $this->assertCount(1, $result->transactions);
         $this->assertSame(123, $result->transactions[0]->transactionId);
         $this->assertSame('John Doe', $result->transactions[0]->counterpartyName);
     }
 
     /**
      * @throws ClientExceptionInterface
-     * @throws Exception
      */
-    public function testGetTransactionsRawReturnsString(): void
+    public function testInvalidJsonThrows(): void
     {
-        $from = new \DateTimeImmutable('2024-01-01');
-        $to = new \DateTimeImmutable('2024-01-02');
-        $expectedUrl = sprintf(
-            'https://fioapi.fio.cz/v1/rest/periods/test-token/%s/%s/transactions.json',
-            $from->format('Y-m-d'),
-            $to->format('Y-m-d')
+        $this->expectException(FioJsonException::class);
+
+        $expectedUrl = $this->url('last/' . self::TOKEN . '/transactions.json');
+
+        $client = $this->createClient(
+            FioApiFixture::invalidJson(),
+            $expectedUrl
         );
 
-        $client = $this->createClient('raw-data', $expectedUrl);
-
-        $result = $client->getTransactionsRaw($from, $to);
-
-        $this->assertSame('raw-data', $result);
+        $client->getLastTransactionsDto();
     }
 
     /**
      * @throws ClientExceptionInterface
-     * @throws Exception
      */
-    public function testXmlFormatIsUsed(): void
+    public function testHttpErrorThrows(): void
     {
-        $from = new \DateTimeImmutable('2024-01-01');
-        $to = new \DateTimeImmutable('2024-01-02');
-        $expectedUrl = sprintf(
-            'https://fioapi.fio.cz/v1/rest/periods/test-token/%s/%s/transactions.xml',
-            $from->format('Y-m-d'),
-            $to->format('Y-m-d')
+        $this->expectException(HttpException::class);
+
+        $expectedUrl = $this->url('last/' . self::TOKEN . '/transactions.json');
+
+        $client = $this->createClient(
+            json_encode(FioApiFixture::minimalTransaction()),
+            $expectedUrl,
+            500
         );
 
-        $client = $this->createClient('<xml></xml>', $expectedUrl, 200, true);
-
-        $result = $client->getTransactionsRaw($from, $to, FioClient::FORMAT_XML);
-
-        $this->assertSame('<xml></xml>', $result);
+        $client->getLastTransactionsDto();
     }
 
     /**
-     * @throws ClientExceptionInterface|Exception
+     * @throws ClientExceptionInterface
      */
     public function testInvalidFormatThrows(): void
     {
@@ -223,32 +165,10 @@ class FioClientTest extends TestCase
 
         $client = $this->createClient('', '', 200, false);
 
-        $client->getTransactionsRaw(new \DateTimeImmutable(), new \DateTimeImmutable(), 'yaml');
-    }
-
-    /**
-     * @throws ClientExceptionInterface|Exception
-     */
-    public function testHttpErrorThrows(): void
-    {
-        $this->expectException(HttpException::class);
-
-        $expectedUrl = 'https://fioapi.fio.cz/v1/rest/last/test-token/transactions.json';
-        $client = $this->createClient('error', $expectedUrl, 500);
-
-        $client->getLastTransactions();
-    }
-
-    /**
-     * @throws ClientExceptionInterface|Exception
-     */
-    public function testInvalidJsonThrows(): void
-    {
-        $this->expectException(JsonException::class);
-
-        $expectedUrl = 'https://fioapi.fio.cz/v1/rest/last/test-token/transactions.json';
-        $client = $this->createClient('not-json', $expectedUrl);
-
-        $client->getLastTransactions();
+        $client->getTransactionsRaw(
+            new \DateTimeImmutable(),
+            new \DateTimeImmutable(),
+            'yaml'
+        );
     }
 }

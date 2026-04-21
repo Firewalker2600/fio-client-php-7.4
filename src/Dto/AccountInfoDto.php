@@ -2,6 +2,8 @@
 
 namespace App\Dto;
 
+use App\Exception\FioJsonException;
+
 class AccountInfoDto
 {
     public string $accountId;
@@ -21,22 +23,57 @@ class AccountInfoDto
 
     public static function fromArray(array $data): self
     {
+        self::assertRequired($data, [
+            'accountId',
+            'bankId',
+            'currency',
+            'iban',
+            'bic',
+            'openingBalance',
+            'closingBalance',
+            'dateStart',
+            'dateEnd',
+        ]);
+
         $dto = new self();
-        $dto->accountId = $data['accountId'];
-        $dto->bankId = $data['bankId'];
-        $dto->currency = $data['currency'];
-        $dto->iban = $data['iban'];
-        $dto->bic = $data['bic'];
+
+        $dto->accountId = (string) $data['accountId'];
+        $dto->bankId = (string) $data['bankId'];
+        $dto->currency = (string) $data['currency'];
+        $dto->iban = (string) $data['iban'];
+        $dto->bic = (string) $data['bic'];
+
         $dto->openingBalance = (float) $data['openingBalance'];
         $dto->closingBalance = (float) $data['closingBalance'];
-        $dto->dateStart = new \DateTimeImmutable($data['dateStart']);
-        $dto->dateEnd = new \DateTimeImmutable($data['dateEnd']);
+
+        try {
+            $dto->dateStart = new \DateTimeImmutable($data['dateStart']);
+        } catch (\Exception $e) {
+            throw new FioJsonException("Invalid dateStart: {$data['dateStart']}");
+        }
+
+        try {
+            $dto->dateEnd = new \DateTimeImmutable($data['dateEnd']);
+        } catch (\Exception $e) {
+            throw new FioJsonException("Invalid dateEnd: {$data['dateEnd']}");
+        }
+
         $dto->yearList = $data['yearList'] ?? null;
         $dto->idList = $data['idList'] ?? null;
-        $dto->idFrom = $data['idFrom'] ?? null;
-        $dto->idTo = $data['idTo'] ?? null;
-        $dto->idLastDownload = $data['idLastDownload'] ?? null;
+
+        $dto->idFrom = isset($data['idFrom']) ? (int) $data['idFrom'] : null;
+        $dto->idTo = isset($data['idTo']) ? (int) $data['idTo'] : null;
+        $dto->idLastDownload = isset($data['idLastDownload']) ? (int) $data['idLastDownload'] : null;
 
         return $dto;
+    }
+
+    private static function assertRequired(array $data, array $keys): void
+    {
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $data)) {
+                throw new FioJsonException("Missing required account info field: {$key}");
+            }
+        }
     }
 }

@@ -31,7 +31,7 @@ class FioSyncManager
     {
         $days = min($days, 90);
 
-        $dto = $this->client->getTransactionsDTO(
+        $dto = $this->client->getTransactionsDto(
             new \DateTimeImmutable("-{$days} days"),
             new \DateTimeImmutable()
         );
@@ -60,7 +60,7 @@ class FioSyncManager
      */
     public function fetchNew(): AccountStatementDto
     {
-        return $this->client->getLastTransactionsDTO();
+        return $this->client->getLastTransactionsDto();
     }
 
     /**

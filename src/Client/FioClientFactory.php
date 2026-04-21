@@ -24,17 +24,6 @@ class FioClientFactory
         );
     }
 
-    public static function fromEnv(): FioClient
-    {
-        $token = $_ENV['FIO_TOKEN'];
-
-        if (!$token) {
-            throw new \RuntimeException('FIO_TOKEN not set');
-        }
-
-        return self::create($token);
-    }
-
     private static function createDefaultHttpClient(): ClientInterface
     {
         return new GuzzleClient([

@@ -2,11 +2,25 @@
 
 namespace App\Tests\Fixture;
 
-class FioApiFixture
+final class FioApiFixture
 {
-    public static function accountInfo(array $overrides = []): array
+    public static function minimalTransaction(int $id = 123, string $name = 'John Doe'): array
     {
-        return array_merge([
+        return [
+            'accountStatement' => [
+                'info' => self::minimalInfo(),
+                'transactionList' => [
+                    'transaction' => [
+                        self::transaction($id, $name),
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    public static function minimalInfo(): array
+    {
+        return [
             'accountId' => '123',
             'bankId' => '2010',
             'currency' => 'CZK',
@@ -21,33 +35,22 @@ class FioApiFixture
             'idFrom' => null,
             'idTo' => null,
             'idLastDownload' => null,
-        ], $overrides);
+        ];
     }
 
-    public static function transaction(array $overrides = []): array
+    public static function transaction(int $id, string $name): array
     {
-        return array_merge([
-            'column22' => ['value' => 1],
+        return [
+            'column22' => ['value' => $id],
             'column0' => ['value' => '2024-01-01+0100'],
             'column1' => ['value' => 100.0],
             'column14' => ['value' => 'CZK'],
-            'column2' => ['value' => null],
-            'column10' => ['value' => null],
-            'column17' => ['value' => null],
-        ], $overrides);
+            'column10' => ['value' => $name],
+        ];
     }
 
-    public static function statement(array $overrides = [], array $transactions = []): array
+    public static function invalidJson(): string
     {
-        return array_merge([
-            'accountStatement' => [
-                'info' => self::accountInfo(),
-                'transactionList' => [
-                    'transaction' => $transactions ?: [
-                        self::transaction(),
-                    ],
-                ],
-            ],
-        ], $overrides);
+        return 'not-json';
     }
 }

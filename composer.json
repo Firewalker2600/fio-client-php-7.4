@@ -1,22 +1,23 @@
 {
-    "name": "your-vendor/fio-client",
+    "name": "firewalker/fio-client-php-7.4",
     "description": "PHP client for the Fio Bank API with DTO support",
     "type": "library",
     "license": "MIT",
     "authors": [
         {
-            "name": "Your Name",
-            "email": "you@example.com"
+            "name": "Josef Rezek",
+            "email": "josef.rezek@gmail.com"
         }
     ],
     "require": {
         "php": ">=7.4",
         "psr/http-client": "^1.0",
-        "psr/http-message": "^1.0"
+        "psr/http-message": "^1.0",
+        "nyholm/psr7": "^1.8",
+        "ext-json": "*"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.0",
-        "php-http/discovery": "^1.14",
         "guzzlehttp/guzzle": "^7.0"
     },
     "autoload": {
@@ -30,5 +31,7 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "config": {
+    }
 }
