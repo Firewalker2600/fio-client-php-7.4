@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Client;
+namespace Firewalker\FioClient\Client;
 
-use App\Dto\AccountStatementDto;
-use App\Exception\FioJsonException;
-use App\Exception\HttpException;
+use Firewalker\FioClient\Dto\AccountStatementDto;
+use Firewalker\FioClient\Exception\FioJsonException;
+use Firewalker\FioClient\Exception\HttpException;
 use Psr\Http\Client\ClientExceptionInterface;
 
 interface FioClientInterface

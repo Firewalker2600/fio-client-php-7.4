@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Client;
+namespace Firewalker\FioClient\Tests\Client;
 
-use App\Client\FioClient;
-use App\Dto\AccountStatementDto;
-use App\Exception\HttpException;
-use App\Exception\InvalidFormatException;
-use App\Exception\FioJsonException;
-use App\Tests\Fixture\FioApiFixture;
+use Firewalker\FioClient\Client\FioClient;
+use Firewalker\FioClient\Dto\AccountStatementDto;
+use Firewalker\FioClient\Exception\HttpException;
+use Firewalker\FioClient\Exception\InvalidFormatException;
+use Firewalker\FioClient\Exception\FioJsonException;
+use Firewalker\FioClient\Tests\Fixture\FioApiFixture;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;

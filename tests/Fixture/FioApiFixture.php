@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\Fixture;
+namespace Firewalker\FioClient\Tests\Fixture;
 
 final class FioApiFixture
 {

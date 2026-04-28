@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Exception;
+namespace Firewalker\FioClient\Exception;
 
-use App\Exception\FioException;
+use Firewalker\FioClient\Exception\FioException;
 
 class FioDuplicateRequestException extends FioException
 {

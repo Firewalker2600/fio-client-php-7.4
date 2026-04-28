@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Client;
+namespace Firewalker\FioClient\Client;
 
 class FioFormat
 {

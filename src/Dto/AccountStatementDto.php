@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Dto;
+namespace Firewalker\FioClient\Dto;
 
-use App\Exception\FioJsonException;
+use Firewalker\FioClient\Exception\FioJsonException;
 
 class AccountStatementDto
 {

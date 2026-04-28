@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-use App\Dto\AccountStatementDto;
+use Firewalker\FioClient\Dto\AccountStatementDto;
 
 interface TransactionIdExtractorInterface
 {

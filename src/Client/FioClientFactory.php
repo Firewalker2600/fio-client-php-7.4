@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Client;
+namespace Firewalker\FioClient\Client;
 
 use GuzzleHttp\Client as GuzzleClient;
 use Nyholm\Psr7\Factory\Psr17Factory;

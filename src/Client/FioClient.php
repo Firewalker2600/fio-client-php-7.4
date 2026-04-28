@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Client;
+namespace Firewalker\FioClient\Client;
 
-use App\Dto\AccountStatementDto;
-use App\Exception\FioDuplicateRequestException;
-use App\Exception\HttpException;
-use App\Exception\InvalidFormatException;
-use App\Exception\FioJsonException;
+use Firewalker\FioClient\Dto\AccountStatementDto;
+use Firewalker\FioClient\Exception\FioDuplicateRequestException;
+use Firewalker\FioClient\Exception\HttpException;
+use Firewalker\FioClient\Exception\InvalidFormatException;
+use Firewalker\FioClient\Exception\FioJsonException;
 use InvalidArgumentException;
 use JsonException;
 use Psr\Http\Client\ClientExceptionInterface;

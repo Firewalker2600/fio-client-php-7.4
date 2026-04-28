@@ -2,8 +2,8 @@
 
 namespace App\Service;
 
-use App\Client\FioClientInterface;
-use App\Dto\AccountStatementDto;
+use Firewalker\FioClient\Client\FioClientInterface;
+use Firewalker\FioClient\Dto\AccountStatementDto;
 use Psr\Http\Client\ClientExceptionInterface;
 
 final class FioSyncManager
