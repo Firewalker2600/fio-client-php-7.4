@@ -167,8 +167,8 @@ class FioClient
 
         if ($response->getStatusCode() === 409) {
             throw new FioDuplicateRequestException(
-                $response->getStatusCode(),
-                'FIO API rejected a duplicate request (requests repeated within a short time window may be rejected, typically ~30s).'
+                'FIO API rejected a duplicate request (requests repeated within a short time window may be rejected, typically ~30s).',
+                $response->getStatusCode()
             );
         }
 
