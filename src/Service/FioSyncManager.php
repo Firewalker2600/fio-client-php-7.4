@@ -2,19 +2,19 @@
 
 namespace App\Service;
 
-use App\Client\FioClient;
+use App\Client\FioClientInterface;
 use App\Dto\AccountStatementDto;
 use Psr\Http\Client\ClientExceptionInterface;
 
-class FioSyncManager
+final class FioSyncManager
 {
-    private FioClient $client;
+    private FioClientInterface $client;
     private TransactionIdExtractorInterface $extractor;
 
-    public function __construct(FioClient $client, ?TransactionIdExtractorInterface $extractor = null)
+    public function __construct(FioClientInterface $client, TransactionIdExtractorInterface $extractor)
     {
         $this->client = $client;
-        $this->extractor = $extractor ?? new DefaultTransactionIdExtractor();
+        $this->extractor = $extractor;
     }
 
     /**
