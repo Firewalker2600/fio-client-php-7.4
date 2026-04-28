@@ -20,7 +20,7 @@ composer require your-vendor/fio-client
 ### Basic Setup
 
 ```php
-use App\Client\FioClient;
+use Firewalker\FioClient\Client\FioClient;
 use GuzzleHttp\Client as HttpClient;
 use Http\Discovery\Psr17FactoryDiscovery;
 
@@ -44,7 +44,7 @@ $data = json_decode($raw, true);             // array
 ### Fetch Transactions as DTO
 
 ```php
-use App\Dto\AccountStatementDto;
+use Firewalker\FioClient\Dto\AccountStatementDto;
 
 $dto = $fio->getTransactionsDTO($from, $to); // AccountStatementDto
 
