@@ -1,54 +1,84 @@
 <?php
+
+declare(strict_types=1);
+
 namespace App\Dto;
 
 class TransactionDto
 {
     public int $transactionId;
-    public ?int $orderId = null;
+    public ?int $orderId;
     public \DateTimeImmutable $date;
     public float $amount;
     public string $currency;
 
-    public ?string $counterpartyAccount = null;
-    public ?string $counterpartyName = null;
-    public ?string $counterpartyBankCode = null;
-    public ?string $counterpartyBankName = null;
-    public ?string $variableSymbol = null;
-    public ?string $userIdentification = null;
-    public ?string $message = null;
-    public ?string $type = null;
-    public ?string $performedBy = null;
-    public ?string $comment = null;
+    public ?string $counterpartyAccount;
+    public ?string $counterpartyName;
+    public ?string $counterpartyBankCode;
+    public ?string $counterpartyBankName;
+    public ?string $variableSymbol;
+    public ?string $userIdentification;
+    public ?string $message;
+    public ?string $type;
+    public ?string $performedBy;
+    public ?string $comment;
+
+    public function __construct(
+        int $transactionId,
+        ?int $orderId,
+        \DateTimeImmutable $date,
+        float $amount,
+        string $currency,
+        ?string $counterpartyAccount,
+        ?string $counterpartyName,
+        ?string $counterpartyBankCode,
+        ?string $counterpartyBankName,
+        ?string $variableSymbol,
+        ?string $userIdentification,
+        ?string $message,
+        ?string $type,
+        ?string $performedBy,
+        ?string $comment
+    ) {
+        $this->transactionId = $transactionId;
+        $this->orderId = $orderId;
+        $this->date = $date;
+        $this->amount = $amount;
+        $this->currency = $currency;
+
+        $this->counterpartyAccount = $counterpartyAccount;
+        $this->counterpartyName = $counterpartyName;
+        $this->counterpartyBankCode = $counterpartyBankCode;
+        $this->counterpartyBankName = $counterpartyBankName;
+        $this->variableSymbol = $variableSymbol;
+        $this->userIdentification = $userIdentification;
+        $this->message = $message;
+        $this->type = $type;
+        $this->performedBy = $performedBy;
+        $this->comment = $comment;
+    }
 
     public static function fromArray(array $data): self
     {
-        $dto = new self();
+        return new self(
+            self::getInt($data, 'column22'),
+            self::getNullableInt($data, 'column17'),
+            self::getDate($data, 'column0'),
+            self::getFloat($data, 'column1'),
+            self::getString($data, 'column14'),
 
-        // Required fields
-        $dto->transactionId = self::getInt($data, 'column22');
-        $dto->date = self::getDate($data, 'column0');
-        $dto->amount = self::getFloat($data, 'column1');
-        $dto->currency = self::getString($data, 'column14');
-
-        // Optional fields
-        $dto->orderId = self::getNullableInt($data, 'column17');
-        $dto->counterpartyAccount = self::getNullableString($data, 'column2');
-        $dto->counterpartyName = self::getNullableString($data, 'column10');
-        $dto->counterpartyBankCode = self::getNullableString($data, 'column3');
-        $dto->counterpartyBankName = self::getNullableString($data, 'column12');
-        $dto->variableSymbol = self::getNullableString($data, 'column5');
-        $dto->userIdentification = self::getNullableString($data, 'column7');
-        $dto->message = self::getNullableString($data, 'column16');
-        $dto->type = self::getNullableString($data, 'column8');
-        $dto->performedBy = self::getNullableString($data, 'column9');
-        $dto->comment = self::getNullableString($data, 'column25');
-
-        return $dto;
+            self::getNullableString($data, 'column2'),
+            self::getNullableString($data, 'column10'),
+            self::getNullableString($data, 'column3'),
+            self::getNullableString($data, 'column12'),
+            self::getNullableString($data, 'column5'),
+            self::getNullableString($data, 'column7'),
+            self::getNullableString($data, 'column16'),
+            self::getNullableString($data, 'column8'),
+            self::getNullableString($data, 'column9'),
+            self::getNullableString($data, 'column25'),
+        );
     }
-
-    // -------------------------
-    // Helpers
-    // -------------------------
 
     private static function getValue(array $data, string $column)
     {
@@ -118,7 +148,6 @@ class TransactionDto
             throw new \RuntimeException("Missing date in {$column}");
         }
 
-        // FIO format: 2026-03-01+0100
         $date = \DateTimeImmutable::createFromFormat('Y-m-dO', $value);
 
         if (!$date) {
