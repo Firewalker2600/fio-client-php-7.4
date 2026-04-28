@@ -13,7 +13,7 @@ class FioClientFactory
         string $token,
         ?ClientInterface $httpClient = null,
         ?RequestFactoryInterface $requestFactory = null
-    ): FioClient {
+    ): FioClientInterface {
         $httpClient = $httpClient ?? self::createDefaultHttpClient();
         $requestFactory = $requestFactory ?? self::createDefaultRequestFactory();
 

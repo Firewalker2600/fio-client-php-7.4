@@ -13,21 +13,13 @@ use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 
-class FioClient
+class FioClient implements FioClientInterface
 {
     private string $token;
     private string $baseUrl;
     private ClientInterface $client;
     private RequestFactoryInterface $requestFactory;
     private const BASE_URL = 'https://fioapi.fio.cz/v1/rest';
-    public const FORMAT_JSON = 'json';
-    public const FORMAT_XML = 'xml';
-    public const FORMAT_CSV = 'csv';
-    private const ALLOWED_FORMATS = [
-        self::FORMAT_JSON,
-        self::FORMAT_XML,
-        self::FORMAT_CSV
-    ];
 
     public function __construct(
         string $token,
@@ -53,7 +45,7 @@ class FioClient
     public function getTransactionsRaw(
         \DateTimeInterface $from,
         \DateTimeInterface $to,
-        string $format = self::FORMAT_JSON
+        string $format = FioFormat::JSON
     ): string {
         if ($from > $to) {
             throw new InvalidArgumentException();
@@ -77,7 +69,7 @@ class FioClient
         \DateTimeInterface $from,
         \DateTimeInterface $to
     ): AccountStatementDto {
-        $json = $this->getTransactionsRaw($from, $to, self::FORMAT_JSON);
+        $json = $this->getTransactionsRaw($from, $to, FioFormat::JSON);
 
         return $this->mapToAccountStatement($json);
     }
@@ -87,7 +79,7 @@ class FioClient
      *
      * @throws ClientExceptionInterface
      */
-    public function getLastTransactionsRaw(string $format = self::FORMAT_JSON): string
+    public function getLastTransactionsRaw(string $format = FioFormat::JSON): string
     {
         $path = sprintf('last/%s/transactions', $this->token);
         return $this->request('GET', $path, $format);
@@ -101,7 +93,7 @@ class FioClient
      */
     public function getLastTransactionsDto(): AccountStatementDto
     {
-        $json = $this->getLastTransactionsRaw(self::FORMAT_JSON);
+        $json = $this->getLastTransactionsRaw(FioFormat::JSON);
 
         return $this->mapToAccountStatement($json);
     }
@@ -111,7 +103,7 @@ class FioClient
      *
      * @throws ClientExceptionInterface
      */
-    public function getTransactionsSinceIdRaw(int $id, string $format = self::FORMAT_JSON): string
+    public function getTransactionsSinceIdRaw(int $id, string $format = FioFormat::JSON): string
     {
         $path = sprintf('by-id/%s/%d/transactions', $this->token, $id);
 
@@ -126,7 +118,7 @@ class FioClient
      */
     public function getTransactionsSinceIdDto(int $id): AccountStatementDto
     {
-        $json = $this->getTransactionsSinceIdRaw($id, self::FORMAT_JSON);
+        $json = $this->getTransactionsSinceIdRaw($id, FioFormat::JSON);
 
         return $this->mapToAccountStatement($json);
     }
@@ -138,7 +130,7 @@ class FioClient
      * @throws HttpException
      * @throws InvalidFormatException
      */
-    public function setLastId(int $id, string $format = self::FORMAT_JSON): string
+    public function setLastId(int $id, string $format = FioFormat::JSON): string
     {
         $path = sprintf('set-last-id/%s/%d', $this->token, $id);
 
@@ -157,7 +149,7 @@ class FioClient
      */
     private function request(string $method, string $path, string $format): string
     {
-        if (!in_array($format, self::ALLOWED_FORMATS, true)) {
+        if (!FioFormat::isValid($format)) {
             throw new InvalidFormatException('Invalid format');
         }
 
