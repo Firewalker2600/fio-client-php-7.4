@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Service;
+namespace Firewalker\FioClient\Service;
 use Firewalker\FioClient\Client\FioClientInterface;
 
 final class FioSyncManagerFactory

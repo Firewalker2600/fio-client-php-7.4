@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Service;
+namespace Firewalker\FioClient\Service;
 
 use Firewalker\FioClient\Client\FioClientInterface;
 use Firewalker\FioClient\Dto\AccountStatementDto;
